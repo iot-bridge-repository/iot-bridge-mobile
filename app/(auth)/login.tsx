@@ -1,6 +1,7 @@
 import { FontAwesome } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router"; //untuk pindah halaman
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -47,7 +48,9 @@ export default function LoginScreen() {
         // Login berhasil, data biasanya token atau info user
         Alert.alert("Sukses", "Login berhasil!");
         console.log("Data login:", data);
+        router.push("/(tabs)/dashboard");
         // Navigasi ke halaman utama atau simpan token
+        await AsyncStorage.setItem("jwtToken", data.data.token);
       } else {
         // Jika API mengembalikan error
         Alert.alert("Login gagal", data.message || "Periksa kembali data Anda");
@@ -58,6 +61,18 @@ export default function LoginScreen() {
       console.error(error);
     }
   };
+  useEffect(() => {
+    const checkToken = async () => {
+      const token = await AsyncStorage.getItem("jwtToken");
+      if (token) {
+        // Jika token sudah ada, langsung arahkan ke dashboard
+        router.replace("/(tabs)/dashboard");
+      }
+    };
+
+    checkToken();
+  }, []);
+
   return (
     <View style={styles.container}>
       {/* Header Background Curve */}
