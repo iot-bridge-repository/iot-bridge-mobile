@@ -5,6 +5,7 @@ import {
   Ionicons,
   MaterialIcons,
 } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { DrawerContentScrollView, DrawerItem } from "@react-navigation/drawer";
 import { usePathname, useRouter } from "expo-router";
 import { Image, View } from "react-native";
@@ -36,7 +37,7 @@ export default function CustomDrawer(props: any) {
         label="Dashboard"
         icon={() => (
           <Ionicons
-            name="home-outline"
+            name="home"
             size={20}
             color={isActive("/dashboard") ? "white" : "orange"}
           />
@@ -51,7 +52,7 @@ export default function CustomDrawer(props: any) {
         label="Perangkat"
         icon={() => (
           <MaterialIcons
-            name="devices-other"
+            name="devices"
             size={20}
             color={isActive("/perangkat") ? "white" : "orange"}
           />
@@ -65,24 +66,7 @@ export default function CustomDrawer(props: any) {
         }}
         onPress={() => router.push("/perangkat")}
       />
-      <DrawerItem
-        label="Pengguna"
-        icon={() => (
-          <Ionicons
-            name="people-outline"
-            size={20}
-            color={isActive("/pengguna") ? "white" : "orange"}
-          />
-        )}
-        labelStyle={{
-          color: isActive("/pengguna") ? "white" : "orange",
-          marginLeft: -4,
-        }}
-        style={{
-          backgroundColor: isActive("/pengguna") ? "#2E5C87" : "transparent",
-        }}
-        onPress={() => router.push("/pengguna")}
-      />
+
       <DrawerItem
         label="Organisasi"
         icon={() => (
@@ -138,6 +122,41 @@ export default function CustomDrawer(props: any) {
           backgroundColor: isActive("/pengaturan") ? "#2E5C87" : "transparent",
         }}
         onPress={() => router.push("/pengaturan")}
+      />
+      <DrawerItem
+        label="Pengguna"
+        icon={() => (
+          <Ionicons
+            name="person"
+            size={20}
+            color={isActive("/pengguna") ? "white" : "orange"}
+          />
+        )}
+        labelStyle={{
+          color: isActive("/pengguna") ? "white" : "orange",
+          marginLeft: -4,
+        }}
+        style={{
+          backgroundColor: isActive("/pengguna") ? "#2E5C87" : "transparent",
+        }}
+        onPress={() => router.push("/pengguna")}
+      />
+      <DrawerItem
+        label="Keluar akun"
+        icon={() => (
+          <Ionicons name="log-out-outline" size={20} color={"orange"} />
+        )}
+        labelStyle={{
+          color: "orange",
+          marginLeft: -4,
+        }}
+        style={{
+          backgroundColor: "transparent",
+        }}
+        onPress={() => {
+          AsyncStorage.removeItem("jwtToken");
+          router.replace("/(auth)/login");
+        }}
       />
     </DrawerContentScrollView>
   );
