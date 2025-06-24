@@ -18,6 +18,8 @@ export default function RootLayout() {
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="register" options={{ headerShown: false }} />
         <Stack.Screen name="forgetpassword" options={{ headerShown: false }} />
+        screenOptions= animation: "slide_from_bottom", // ANIMASI SWIPE-UP
+        headerShown: false,
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

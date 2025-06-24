@@ -1,14 +1,14 @@
-// components/CustomDrawer.tsx
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { DrawerContentScrollView, DrawerItem } from "@react-navigation/drawer";
+import { usePathname, useRouter } from "expo-router";
+import { Image, View } from "react-native";
+
 import {
   Entypo,
   FontAwesome5,
   Ionicons,
   MaterialIcons,
 } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { DrawerContentScrollView, DrawerItem } from "@react-navigation/drawer";
-import { usePathname, useRouter } from "expo-router";
-import { Image, View } from "react-native";
 
 export default function CustomDrawer(props: any) {
   // isi komponen

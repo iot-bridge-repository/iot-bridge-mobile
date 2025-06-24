@@ -1,9 +1,8 @@
 // app/(tabs)/_layout.tsx
-
 import { Drawer } from "expo-router/drawer";
-import CustomDrawer from "../../components/CustomDrawer"; // relatif terhadap folder ini
+import CustomDrawer from "../../components/CustomDrawer";
 
-export default function Layout() {
+export default function DrawerLayout() {
   return (
     <Drawer
       drawerContent={(props) => <CustomDrawer {...props} />}

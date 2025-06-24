@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { DrawerActions, useNavigation } from "@react-navigation/native";
-import axios from "axios"; // jika pakai axios
+import axios from "axios";
 import * as ImagePicker from "expo-image-picker";
 import React, { useEffect, useState } from "react";
 
@@ -162,9 +162,9 @@ const ProfileScreen = () => {
       </TouchableOpacity>
 
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>Nama Pengguna*</Text>
+        <Text style={styles.label}>Nama Pengguna</Text>
         <TextInput style={styles.input} value={username} editable={false} />
-        <Text style={styles.label}>Alamat Email*</Text>
+        <Text style={styles.label}>Alamat Email</Text>
         <TextInput style={styles.input} value={email} editable={false} />
         <Text style={styles.label}>Nomor Handphone</Text>
         <TextInput style={styles.input} value={phone} editable={false} />
@@ -214,6 +214,8 @@ const ProfileScreen = () => {
           <View style={styles.modalContent}>
             <Text style={styles.title}>Ubah Profil</Text>
 
+            <Text style={styles.title}>Ubah Profil</Text>
+
             <TouchableOpacity onPress={pickImage}>
               <Image
                 source={{ uri: tempImage }}
@@ -230,6 +232,8 @@ const ProfileScreen = () => {
               </Text>
             </TouchableOpacity>
 
+            {/* Keterangan nama */}
+            <Text style={styles.inputLabel}>Nama Pengguna</Text>
             <TextInput
               style={styles.input}
               placeholder="Nama Pengguna"
@@ -237,6 +241,8 @@ const ProfileScreen = () => {
               onChangeText={setTempUsername}
             />
 
+            {/* Keterangan nomor telepon */}
+            <Text style={styles.inputLabel}>Nomor Handphone</Text>
             <TextInput
               style={styles.input}
               placeholder="Nomor HP"
@@ -275,6 +281,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     alignItems: "center",
     paddingBottom: 50,
+    height: "100%",
   },
   header: {
     flexDirection: "row",
@@ -333,6 +340,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 10,
     padding: 20,
+  },
+  inputLabel: {
+    fontWeight: "500",
+    marginBottom: 5,
+    marginTop: 10,
   },
 });
 
