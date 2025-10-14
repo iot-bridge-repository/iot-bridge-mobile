@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "21672606723",
+    "project_id": "iotbridgemobile",
+    "storage_bucket": "iotbridgemobile.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:21672606723:android:ae951f164b3be215242236",
+        "android_client_info": {
+          "package_name": "com.milano.sheva.iotbridgemobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB31KVgbMKNRsVYAK24LUcjY6XZlIvrYw8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
