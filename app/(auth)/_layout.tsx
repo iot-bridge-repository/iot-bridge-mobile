@@ -1,27 +1,21 @@
-import {
-  DarkTheme,
-  DefaultTheme,
-  ThemeProvider,
-} from "@react-navigation/native";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import "react-native-reanimated";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { useColorScheme } from "@/hooks/useColorScheme";
-
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
-
+export default function AuthLayout() {
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="login" options={{ headerShown: false }} />
-        <Stack.Screen name="register" options={{ headerShown: false }} />
-        <Stack.Screen name="forgetpassword" options={{ headerShown: false }} />
-        screenOptions= animation: "slide_from_bottom", // ANIMASI SWIPE-UP
-        headerShown: false,
+    <SafeAreaView style={{ flex: 1 }}>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          animation: "slide_from_bottom", // animasi swipe-up
+        }}
+      >
+        <Stack.Screen name="login" />
+        <Stack.Screen name="register" />
+        <Stack.Screen name="forgetpassword" />
       </Stack>
       <StatusBar style="auto" />
-    </ThemeProvider>
+    </SafeAreaView>
   );
 }

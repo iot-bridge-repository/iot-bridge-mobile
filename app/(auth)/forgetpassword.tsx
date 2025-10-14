@@ -1,31 +1,39 @@
-import { FontAwesome } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import React, { useState } from "react";
+// Import berbagai komponen dan library yang dibutuhkan
+import { FontAwesome } from "@expo/vector-icons"; // untuk ikon fontawesome
+import { useRouter } from "expo-router"; // untuk navigasi antar halaman
+import React, { useState } from "react"; // untuk membuat komponen dan state
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+  ActivityIndicator, // indikator loading
+  Alert, // untuk menampilkan pesan alert
+  Image, // menampilkan gambar
+  StyleSheet, // styling komponen
+  Text, // menampilkan teks
+  TextInput, // input teks
+  TouchableOpacity, // tombol yang bisa ditekan
+  View, // wadah utama elemen UI
 } from "react-native";
 
+// Komponen utama halaman lupa password
 export default function LoginScreen() {
+  // State untuk menyimpan input email
   const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false); //untuk loading jika kondisi true
-  const apiUrl = `${process.env.EXPO_PUBLIC_API_URL}/auth/forgot-password`; // Ganti dengan URL backend-mu
-  const router = useRouter();
+  // State untuk menandai loading saat proses kirim email
+  const [loading, setLoading] = useState(false);
+  // URL API (belum digunakan untuk tampilan saja)
+  const apiUrl = `${process.env.EXPO_PUBLIC_API_URL}/auth/forgot-password`;
+  const router = useRouter(); // untuk navigasi halaman
 
+  // Fungsi untuk menangani tombol lupa password
   const handleForgetPassword = async () => {
     if (!email) {
       Alert.alert("Error", "Email harus diisi!");
       return;
     }
 
+    // Aktifkan indikator loading
     setLoading(true);
     try {
+      // Kirim data ke API backend (tidak termasuk tampilan)
       const response = await fetch(apiUrl, {
         method: "POST",
         headers: {
@@ -37,16 +45,12 @@ export default function LoginScreen() {
       });
 
       const data = await response.json();
-
       setLoading(false);
 
       if (response.ok) {
-        // Login berhasil, data biasanya token atau info user
         Alert.alert("Sukses", "cek email untuk mengganti Password!");
         console.log("Data login:", data);
-        // Navigasi ke halaman utama atau simpan token
       } else {
-        // Jika API mengembalikan error
         Alert.alert(
           "ganti password gagal",
           data.message || "Periksa kembali email Anda"
@@ -58,11 +62,12 @@ export default function LoginScreen() {
       console.error(error);
     }
   };
+
+  // Bagian tampilan antarmuka pengguna (UI)
   return (
     <View style={styles.container}>
-      {/* Header Background Curve */}
+      {/* Bagian header dengan logo */}
       <View style={styles.header}>
-        {/* Ganti dengan logo SVG / PNG-mu */}
         <Image
           source={require("../../assets/images/logo-sign.png")}
           style={styles.logo}
@@ -70,15 +75,19 @@ export default function LoginScreen() {
         />
       </View>
 
+      {/* Bagian form input */}
       <View style={styles.form}>
         <Text style={styles.label}>Alamat Email</Text>
+
+        {/* Input email */}
         <View style={styles.inputContainer}>
           <TextInput
             placeholder="Masukan email pengguna"
             style={styles.input}
             value={email}
-            onChangeText={setEmail}
+            onChangeText={setEmail} // simpan nilai input ke state email
           />
+          {/* Ikon amplop di kanan input */}
           <FontAwesome
             name="envelope"
             size={20}
@@ -87,13 +96,13 @@ export default function LoginScreen() {
           />
         </View>
 
-        <View style={styles.inputContainer}></View>
-
+        {/* Tombol Kirim */}
         <TouchableOpacity
           style={styles.button}
           onPress={handleForgetPassword}
-          disabled={loading}
+          disabled={loading} // tidak bisa ditekan saat loading
         >
+          {/* Tampilkan loading atau teks Kirim */}
           {loading ? (
             <ActivityIndicator color="#fff" />
           ) : (
@@ -101,6 +110,7 @@ export default function LoginScreen() {
           )}
         </TouchableOpacity>
 
+        {/* Teks untuk daftar akun baru */}
         <Text style={styles.registerText}>
           Belum punya akun?
           <TouchableOpacity onPress={() => router.push("/register")}>
@@ -112,16 +122,17 @@ export default function LoginScreen() {
   );
 }
 
+// Bagian style untuk mengatur tampilan komponen
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ECECEC",
+    backgroundColor: "#ECECEC", // warna latar belakang utama
   },
   header: {
-    backgroundColor: "#19335A",
-    borderBottomLeftRadius: 120,
+    backgroundColor: "#19335A", // warna biru tua
+    borderBottomLeftRadius: 120, // membuat sisi bawah melengkung
     borderBottomRightRadius: 120,
-    alignItems: "center",
+    alignItems: "center", // posisi tengah
     paddingVertical: 10,
   },
   logo: {
@@ -154,12 +165,6 @@ const styles = StyleSheet.create({
     borderRadius: 7,
     marginLeft: 8,
   },
-  forgot: {
-    alignSelf: "flex-end",
-    color: "#19335A",
-    marginTop: 10,
-    textDecorationLine: "underline",
-  },
   button: {
     backgroundColor: "#19335A",
     padding: 15,
@@ -169,7 +174,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 4,
-    elevation: 5,
+    elevation: 5, // efek bayangan di Android
   },
   buttonText: {
     color: "#fff",

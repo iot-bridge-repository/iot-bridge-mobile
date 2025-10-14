@@ -1,244 +1,301 @@
 import { Ionicons } from "@expo/vector-icons";
-import { DrawerActions, useNavigation } from "@react-navigation/native";
-import { useRouter } from "expo-router";
+import { useNavigation } from "@react-navigation/native";
+import * as Device from "expo-device";
+import * as Notifications from "expo-notifications";
 import React, { useState } from "react";
 import {
-  FlatList,
-  Image,
+  Alert,
   Modal,
+  ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 
-interface MenuItem {
-  id: string;
-  title: string;
-}
+// Pastikan notifikasi diatur agar muncul walau app terbuka
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true, // Add this line
+    shouldShowList: true, // Add this line
+  }),
+});
 
-const data: MenuItem[] = [
-  { id: "1", title: "Notifikasi Dan Suara" },
-  { id: "2", title: "Ganti Email" },
-  { id: "3", title: "Ganti Password" },
-  { id: "4", title: "asdsadsa" },
-];
+interface MenuItem {
+  title: string;
+  description?: string;
+}
 
 export default function PengaturanScreen() {
   const navigation = useNavigation();
-  const router = useRouter();
-
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [notifikasiAktif, setNotifikasiAktif] = useState(false);
 
-  const [oldEmail, setOldEmail] = useState("");
-  const [newEmail, setNewEmail] = useState("");
+  const menuItems: MenuItem[] = [
+    {
+      title: "Notifikasi Dan Suara",
+      description: "Atur izin notifikasi perangkat",
+    },
+    { title: "Ganti Email", description: "Ubah alamat email akun Anda" },
+    { title: "Ganti Password", description: "Perbarui kata sandi akun Anda" },
+  ];
 
-  const [oldPassword, setOldPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
+  const handleItemPress = async (item: MenuItem) => {
+    if (item.title === "Notifikasi Dan Suara") {
+      if (!Device.isDevice) {
+        Alert.alert("Peringatan", "Notifikasi hanya bisa di perangkat fisik.");
+        return;
+      }
 
-  const handleItemPress = (item: MenuItem) => {
-    if (item.title === "Ganti Email") {
+      try {
+        const { status: existingStatus } =
+          await Notifications.getPermissionsAsync();
+        let finalStatus = existingStatus;
+
+        if (existingStatus !== "granted") {
+          const { status } = await Notifications.requestPermissionsAsync();
+          finalStatus = status;
+        }
+
+        if (finalStatus !== "granted") {
+          Alert.alert("Ditolak", "Izin notifikasi belum diberikan.");
+          return;
+        }
+
+        const token = (await Notifications.getExpoPushTokenAsync()).data;
+        console.log("📱 Expo Push Token:", token);
+
+        setNotifikasiAktif(true);
+
+        // Kirim contoh notifikasi lokal
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: "🔔 Notifikasi Aktif!",
+            body: "Kamu sudah berhasil mengaktifkan notifikasi di perangkat ini.",
+            sound: true,
+          },
+          trigger: null, // langsung tampil
+        });
+
+        Alert.alert(
+          "Berhasil",
+          "Notifikasi telah diaktifkan di perangkat kamu!"
+        );
+      } catch (error) {
+        console.error("Gagal meminta izin notifikasi:", error);
+        Alert.alert("Error", "Terjadi kesalahan saat mengaktifkan notifikasi.");
+      }
+    } else if (item.title === "Ganti Email") {
       setShowEmailModal(true);
     } else if (item.title === "Ganti Password") {
       setShowPasswordModal(true);
     }
   };
 
-  const renderItem = ({ item }: { item: MenuItem }) => (
-    <TouchableOpacity
-      style={styles.menuItem}
-      onPress={() => handleItemPress(item)}
-    >
-      <Text style={styles.menuText}>{item.title}</Text>
-      <Ionicons name="chevron-forward" size={20} color="#fff" />
-    </TouchableOpacity>
-  );
+  const handleSaveEmail = () => {
+    Alert.alert("Berhasil", `Email diubah menjadi ${email}`);
+    setShowEmailModal(false);
+  };
+
+  const handleSavePassword = () => {
+    Alert.alert("Berhasil", "Password berhasil diperbarui!");
+    setShowPasswordModal(false);
+  };
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Ionicons
-          name="menu"
-          size={24}
-          color="#000"
-          onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
-        />
-        <Text style={styles.title}>Pengaturan</Text>
-        <TouchableOpacity onPress={() => router.push("/pengguna")}>
-          <Image
-            source={{ uri: "https://i.pravatar.cc/100" }}
-            style={styles.profileImage}
-          />
+    <ScrollView style={styles.container}>
+      {/* 🔙 Header dengan tombol back */}
+      <View style={styles.headerContainer}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Ionicons name="arrow-back" size={24} color="#111827" />
         </TouchableOpacity>
+        <Text style={styles.header}>Pengaturan</Text>
       </View>
 
-      {/* Menu */}
-      <FlatList
-        data={data}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.menuContainer}
-      />
+      {/* 📋 Daftar menu */}
+      {menuItems.map((item, index) => (
+        <TouchableOpacity
+          key={index}
+          style={styles.menuItem}
+          onPress={() => handleItemPress(item)}
+        >
+          <View style={styles.menuTextContainer}>
+            <Text style={styles.menuTitle}>{item.title}</Text>
+            {item.description && (
+              <Text style={styles.menuDescription}>{item.description}</Text>
+            )}
+          </View>
+
+          {item.title === "Notifikasi Dan Suara" && (
+            <Switch value={notifikasiAktif} onValueChange={() => {}} disabled />
+          )}
+        </TouchableOpacity>
+      ))}
 
       {/* Modal Ganti Email */}
-      <Modal visible={showEmailModal} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setShowEmailModal(false)}
-            >
-              <Ionicons name="close" size={24} color="#000" />
-            </TouchableOpacity>
+      <Modal visible={showEmailModal} animationType="slide" transparent>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Ganti Email</Text>
             <TextInput
+              placeholder="Masukkan email baru"
               style={styles.input}
-              placeholder="Email lama"
-              value={oldEmail}
-              onChangeText={setOldEmail}
               keyboardType="email-address"
+              value={email}
+              onChangeText={setEmail}
             />
-            <TextInput
-              style={styles.input}
-              placeholder="Email baru"
-              value={newEmail}
-              onChangeText={setNewEmail}
-              keyboardType="email-address"
-            />
-            <TouchableOpacity
-              style={styles.submitButton}
-              onPress={() => {
-                setShowEmailModal(false);
-                alert("Email berhasil diperbarui.");
-              }}
-            >
-              <Text style={{ color: "#fff", fontWeight: "bold" }}>Simpan</Text>
-            </TouchableOpacity>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.saveButton}
+                onPress={handleSaveEmail}
+              >
+                <Text style={styles.buttonText}>Simpan</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setShowEmailModal(false)}
+              >
+                <Text style={styles.buttonText}>Batal</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
 
       {/* Modal Ganti Password */}
-      <Modal visible={showPasswordModal} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setShowPasswordModal(false)}
-            >
-              <Ionicons name="close" size={24} color="#000" />
-            </TouchableOpacity>
+      <Modal visible={showPasswordModal} animationType="slide" transparent>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Ganti Password</Text>
             <TextInput
+              placeholder="Masukkan password baru"
               style={styles.input}
-              placeholder="Password lama"
-              value={oldPassword}
-              onChangeText={setOldPassword}
               secureTextEntry
+              value={password}
+              onChangeText={setPassword}
             />
-            <TextInput
-              style={styles.input}
-              placeholder="Password baru"
-              value={newPassword}
-              onChangeText={setNewPassword}
-              secureTextEntry
-            />
-            <TouchableOpacity
-              style={styles.submitButton}
-              onPress={() => {
-                setShowPasswordModal(false);
-                alert("Password berhasil diperbarui.");
-              }}
-            >
-              <Text style={{ color: "#fff", fontWeight: "bold" }}>Simpan</Text>
-            </TouchableOpacity>
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.saveButton}
+                onPress={handleSavePassword}
+              >
+                <Text style={styles.buttonText}>Simpan</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setShowPasswordModal(false)}
+              >
+                <Text style={styles.buttonText}>Batal</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
-    </View>
+    </ScrollView>
   );
 }
 
+// 🎨 Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
-    paddingTop: 50,
-    paddingHorizontal: 20,
+    padding: 20,
+    backgroundColor: "#F9FAFB",
+  },
+  headerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  backButton: {
+    marginRight: 10,
+    padding: 5,
   },
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 30,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#0A2342",
-  },
-  profileImage: {
-    width: 35,
-    height: 35,
-    borderRadius: 35 / 2,
-  },
-  menuContainer: {
-    paddingBottom: 20,
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#111827",
   },
   menuItem: {
-    backgroundColor: "#0A2342",
-    padding: 15,
-    borderRadius: 6,
-    marginBottom: 10,
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#fff",
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  menuText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  modalOverlay: {
+  menuTextContainer: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  menuTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#111827",
+  },
+  menuDescription: {
+    fontSize: 13,
+    color: "#6B7280",
+    marginTop: 4,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
   },
-  modalContainer: {
+  modalContent: {
     backgroundColor: "#fff",
-    width: "85%",
-    borderRadius: 12,
     padding: 20,
-    elevation: 5,
-    position: "relative",
-  },
-  closeButton: {
-    position: "absolute",
-    top: 10,
-    right: 10,
-    zIndex: 10,
+    borderRadius: 16,
+    width: "85%",
   },
   modalTitle: {
-    fontWeight: "bold",
+    fontSize: 18,
+    fontWeight: "700",
     marginBottom: 10,
-    fontSize: 16,
+    color: "#111827",
   },
   input: {
     borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 6,
+    borderColor: "#D1D5DB",
+    borderRadius: 10,
     padding: 10,
-    marginTop: 15,
+    marginBottom: 20,
   },
-  submitButton: {
-    backgroundColor: "#0A2342",
-    paddingVertical: 12,
-    borderRadius: 6,
-    alignItems: "center",
-    marginTop: 20,
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  saveButton: {
+    backgroundColor: "#2563EB",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+  },
+  cancelButton: {
+    backgroundColor: "#9CA3AF",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+  },
+  buttonText: {
+    color: "#fff",
+    fontWeight: "600",
   },
 });

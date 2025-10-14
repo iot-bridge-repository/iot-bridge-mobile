@@ -48,6 +48,23 @@ export default function CustomDrawer(props: any) {
         }}
         onPress={() => router.push("/dashboard")}
       />
+
+      <DrawerItem
+        label="Notifikasi"
+        icon={() => (
+          <Ionicons
+            name="notifications"
+            size={20}
+            color={isActive("/notifikasi") ? "white" : "orange"}
+          />
+        )}
+        labelStyle={{
+          color: isActive("/notifikasi") ? "white" : "orange",
+          marginLeft: -4,
+        }}
+        onPress={() => router.push("/notifikasi")}
+      />
+
       <DrawerItem
         label="Perangkat"
         icon={() => (
@@ -84,25 +101,6 @@ export default function CustomDrawer(props: any) {
           backgroundColor: isActive("/organisasi") ? "#2E5C87" : "transparent",
         }}
         onPress={() => router.push("/organisasi")}
-      />
-
-      <DrawerItem
-        label="Statistika"
-        icon={() => (
-          <Ionicons
-            name="stats-chart"
-            size={20}
-            color={isActive("/statistika") ? "white" : "orange"}
-          />
-        )}
-        labelStyle={{
-          color: isActive("/statistika") ? "white" : "orange",
-          marginLeft: -4,
-        }}
-        style={{
-          backgroundColor: isActive("/statistika") ? "#2E5C87" : "transparent",
-        }}
-        onPress={() => router.push("/statistika")}
       />
 
       <DrawerItem

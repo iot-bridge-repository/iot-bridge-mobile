@@ -1,7 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { DrawerActions, useNavigation } from "@react-navigation/native";
-import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import axios from "axios";
+import { RelativePathString, useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
+import { Alert } from "react-native";
+
 import {
   Image,
   Modal,
@@ -13,57 +17,228 @@ import {
 } from "react-native";
 
 export default function OrganisasiScreen() {
+  // --- Hooks utama navigasi dan router ---
   const navigation = useNavigation();
   const router = useRouter();
+
+  // --- State untuk modal form organisasi baru ---
   const [modalVisible, setModalVisible] = useState(false);
+
+  // --- State input nama organisasi ---
   const [namaOrganisasi, setNamaOrganisasi] = useState("");
 
+  // --- State untuk menyimpan foto profil user ---
+  const [profileImage, setProfileImage] = useState("");
+
+  // --- State daftar organisasi yang dimiliki user ---
+  const [organizations, setOrganizations] = useState<
+    { id: string; name: string; status: string }[]
+  >([]);
+
+  // --- Fungsi untuk membuat path menuju profil organisasi tertentu ---
+  const getOrganizationPath = (orgId: string): string => {
+    return `/organizations/${orgId}/profile`;
+  };
+
+  // --- Fungsi untuk mengambil daftar organisasi dari backend ---
+  const fetchOrganizations = async () => {
+    try {
+      const token = await AsyncStorage.getItem("jwtToken");
+      const response = await axios.get(
+        `${process.env.EXPO_PUBLIC_API_URL}/organizations/list`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      // Log respons backend di console (debugging)
+      console.log("👉 Respons data /organizations/list:", response.data);
+    } catch (error) {
+      console.error("Gagal fetch organizations:", error);
+    }
+  };
+
+  // --- useEffect pertama kali dijalankan saat komponen dimount ---
+  useEffect(() => {
+    fetchOrganizations(); // ambil daftar organisasi user
+
+    // --- Ambil profil pengguna termasuk foto profil ---
+    const fetchProfile = async () => {
+      try {
+        const token = await AsyncStorage.getItem("jwtToken");
+        const response = await axios.get(
+          `${process.env.EXPO_PUBLIC_API_URL}/auth/profile`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        const user = response.data.data.user;
+
+        // Jika user tidak punya foto, tampilkan placeholder
+        setProfileImage(
+          user.profile_picture || "https://via.placeholder.com/100"
+        );
+      } catch (error) {
+        console.error("Gagal mengambil foto profil:", error);
+      }
+    };
+
+    fetchProfile(); // jalankan fungsi ambil profil
+  }, []);
+
+  // --- Fungsi untuk membuka modal form pembuatan organisasi ---
   const handleCreateOrganization = () => {
     setModalVisible(true);
   };
 
-  const handleSubmit = () => {
-    console.log("Nama Organisasi:", namaOrganisasi);
-    setModalVisible(false);
+  // --- Fungsi untuk mengirim data organisasi baru ke backend ---
+  const handleSubmit = async () => {
+    try {
+      const token = await AsyncStorage.getItem("jwtToken");
+      if (!token) {
+        Alert.alert("Token tidak ditemukan");
+        return;
+      }
+
+      // Kirim request POST ke endpoint propose organisasi baru
+      await axios.post(
+        `${process.env.EXPO_PUBLIC_API_URL}/organizations/propose`,
+        { name: namaOrganisasi },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      Alert.alert("Berhasil", "Organisasi berhasil diajukan.");
+      setNamaOrganisasi("");
+      setModalVisible(false);
+
+      // Setelah berhasil, perbarui daftar organisasi
+      await fetchOrganizations();
+    } catch (error: any) {
+      console.error(
+        "Gagal mengajukan organisasi:",
+        error.response?.data || error.message
+      );
+
+      // Pesan error jika nama organisasi sudah ada
+      Alert.alert(
+        "Error",
+        "Gagal mengajukan organisasi. Nama yang diajukan sudah ada. Silakan coba lagi."
+      );
+    }
   };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
+      {/* --- HEADER --- */}
       <View style={styles.header}>
+        {/* Tombol menu drawer kiri */}
         <Ionicons
           name="menu"
           size={24}
           color="#000"
           onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
         />
+
+        {/* Judul halaman */}
         <Text style={styles.title}>Organisasi</Text>
+
+        {/* Foto profil pengguna (navigasi ke halaman pengguna) */}
         <TouchableOpacity onPress={() => router.push("/pengguna")}>
           <Image
-            source={{ uri: "https://i.pravatar.cc/100" }}
+            source={
+              profileImage
+                ? { uri: profileImage }
+                : require("../../assets/icon/profil.png")
+            }
             style={styles.profileImage}
           />
         </TouchableOpacity>
       </View>
 
-      {/* Konten Tengah */}
+      {/* --- KONTEN UTAMA --- */}
       <View style={styles.content}>
-        <Text style={styles.description}>
-          Anda belum memiliki Organisasi. Buat organisasi terlebih dahulu
-        </Text>
-        <TouchableOpacity
-          style={styles.button}
-          onPress={handleCreateOrganization}
-        >
-          <Text style={styles.buttonText}>Buat Organisasi</Text>
-        </TouchableOpacity>
+        {organizations.length === 0 ? (
+          <>
+            {/* Jika belum ada organisasi, tampilkan tombol buat dan lihat semua */}
+            <TouchableOpacity
+              style={styles.button}
+              onPress={handleCreateOrganization}
+            >
+              <Text style={styles.buttonText}>Buat Organisasi</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.button,
+                { backgroundColor: "#4CAF50", marginTop: 10 },
+              ]}
+              onPress={() => router.push("/listorganisasi")}
+            >
+              <Text style={styles.buttonText}>Lihat Semua Organisasi</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          // Jika ada organisasi, tampilkan daftar card organisasi
+          <View style={{ width: "100%", gap: 15, alignItems: "center" }}>
+            {organizations.map((org) => (
+              <TouchableOpacity
+                key={org.id}
+                style={styles.orgCard}
+                onPress={() =>
+                  router.push(getOrganizationPath(org.id) as RelativePathString)
+                }
+              >
+                <View style={styles.orgCardHeader}>
+                  {/* Nama organisasi */}
+                  <Text style={styles.orgCardText}>{org.name}</Text>
+
+                  {/* Status organisasi (disetujui, menunggu, ditolak) */}
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      org.status === "approved"
+                        ? { backgroundColor: "#4CAF50" }
+                        : org.status === "pending"
+                        ? { backgroundColor: "#FFC107" }
+                        : { backgroundColor: "#F44336" },
+                    ]}
+                  >
+                    <Text style={styles.statusText}>
+                      {org.status === "approved"
+                        ? "Disetujui"
+                        : org.status === "pending"
+                        ? "Menunggu"
+                        : "Ditolak"}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+
+            {/* Tombol navigasi ke daftar organisasi */}
+            <TouchableOpacity
+              style={[
+                styles.button,
+                { backgroundColor: "#4CAF50", marginTop: 20 },
+              ]}
+              onPress={() => router.push("/listorganisasi")}
+            >
+              <Text style={styles.buttonText}>Lihat Semua Organisasi</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
-      {/* Modal Form */}
+      {/* --- MODAL FORM AJUKAN ORGANISASI --- */}
       <Modal visible={modalVisible} transparent={true} animationType="fade">
         <View style={styles.modalBackground}>
           <View style={styles.modalContainer}>
-            {/* Tombol Close */}
+            {/* Tombol tutup modal */}
             <TouchableOpacity
               style={styles.closeButton}
               onPress={() => setModalVisible(false)}
@@ -71,6 +246,7 @@ export default function OrganisasiScreen() {
               <Ionicons name="close" size={24} color="#000" />
             </TouchableOpacity>
 
+            {/* Form input nama organisasi */}
             <Text style={{ fontWeight: "bold", marginBottom: 10 }}>
               Nama Organisasi<Text style={{ color: "red" }}>*</Text>
             </Text>
@@ -80,10 +256,14 @@ export default function OrganisasiScreen() {
               value={namaOrganisasi}
               onChangeText={setNamaOrganisasi}
             />
+
+            {/* Catatan tambahan di bawah input */}
             <Text style={styles.helperText}>
               Organisasi yang anda ajukan harus menunggu persetujuan. Anda
               adalah administrator dalam organisasi ini.
             </Text>
+
+            {/* Tombol kirim pengajuan */}
             <TouchableOpacity
               style={styles.submitButton}
               onPress={handleSubmit}
@@ -124,7 +304,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    justifyContent: "center",
+    justifyContent: "flex-start", // sebelumnya "center"
     alignItems: "center",
   },
   description: {
@@ -180,5 +360,36 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 6,
     alignItems: "center",
+  },
+  orgCard: {
+    width: "100%",
+    borderWidth: 1,
+    borderColor: "#0A2342",
+    borderRadius: 8,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    alignItems: "center",
+    marginVertical: 5,
+  },
+  orgCardText: {
+    color: "#0A2342",
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  orgCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: "100%",
+  },
+  statusBadge: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+  },
+  statusText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "bold",
   },
 });
