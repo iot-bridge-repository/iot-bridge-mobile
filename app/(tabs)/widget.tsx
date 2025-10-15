@@ -17,7 +17,7 @@ import {
 } from "react-native";
 import { AnimatedCircularProgress } from "react-native-circular-progress";
 
-// 🔹 Komponen modal form widget
+// 🔹 Modal Form Widget
 const WidgetFormModal = ({
   visible,
   onClose,
@@ -25,7 +25,7 @@ const WidgetFormModal = ({
   onDelete,
   pins,
   initialData,
-  canEdit, // ✅ Tambahan prop untuk kontrol akses
+  canEdit,
 }: any) => {
   const [name, setName] = useState("");
   const [pin, setPin] = useState("");
@@ -153,8 +153,15 @@ export default function WidgetScreen() {
   const [pins, setPins] = useState<string[]>([]);
   const [formVisible, setFormVisible] = useState(false);
   const [selectedWidget, setSelectedWidget] = useState<any>(null);
-  const [userRole, setUserRole] = useState<string | null>(null); // ✅ Role user
+  const [userRole, setUserRole] = useState<string | null>(null);
 
+  // 🔹 Realtime WebSocket values
+  const [ws, setWs] = useState<WebSocket | null>(null);
+  const [realtimeValues, setRealtimeValues] = useState<
+    Record<string, number | string>
+  >({});
+
+  // 🔹 Ambil profil user
   useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -189,11 +196,11 @@ export default function WidgetScreen() {
       console.error("❌ Gagal ambil role user:", err);
     }
   };
-
   useEffect(() => {
     fetchUserRole();
   }, [organizationId]);
 
+  // 🔹 Ambil pins & widgets
   const fetchPins = async () => {
     try {
       const token = await AsyncStorage.getItem("jwtToken");
@@ -226,6 +233,51 @@ export default function WidgetScreen() {
     fetchWidgets();
   }, [organizationId, deviceId]);
 
+  // 🔹 WebSocket connection
+  const connectWebSocket = () => {
+    const socket = new WebSocket("wss://iotbridge.click/ws");
+
+    socket.onopen = () => {
+      console.log("✅ WebSocket connected");
+      pins.forEach((pin) => {
+        const topic = `device-id/${deviceId}/pin/${pin}`;
+        const msg = { type: "subscribe", topic };
+        socket.send(JSON.stringify(msg));
+        console.log("📡 Subscribed to", topic);
+      });
+    };
+
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.pin && data.value !== undefined) {
+          setRealtimeValues((prev) => ({ ...prev, [data.pin]: data.value }));
+        }
+      } catch (err) {
+        console.error("❌ Error parsing websocket data:", err);
+      }
+    };
+
+    socket.onclose = () => {
+      console.log("⚠️ WebSocket closed, reconnect in 3s...");
+      setTimeout(connectWebSocket, 3000);
+    };
+
+    socket.onerror = (err) => {
+      console.error("⚠️ WebSocket error:", err);
+    };
+
+    setWs(socket);
+  };
+
+  useEffect(() => {
+    if (pins.length > 0 && deviceId) {
+      connectWebSocket();
+    }
+    return () => ws?.close();
+  }, [pins, deviceId]);
+
+  // 🔹 Save widget
   const handleSaveWidget = async (widgetData: any) => {
     if (userRole === "Viewer") {
       Alert.alert("Akses Ditolak", "Viewer tidak dapat mengubah widget.");
@@ -250,6 +302,7 @@ export default function WidgetScreen() {
     }
   };
 
+  // 🔹 Delete widget
   const handleDeleteWidget = async () => {
     if (userRole === "Viewer") {
       Alert.alert("Akses Ditolak", "Viewer tidak dapat menghapus widget.");
@@ -298,49 +351,51 @@ export default function WidgetScreen() {
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.grid}>
-          {widgets.map((item, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.card}
-              onPress={() => {
-                setSelectedWidget(item);
-                setFormVisible(true);
-              }}
-              activeOpacity={0.8}
-            >
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardLabel}>{item.name}</Text>
-              </View>
-              <View style={{ alignItems: "center" }}>
-                <AnimatedCircularProgress
-                  size={100}
-                  width={8}
-                  fill={
-                    item.default_value && item.max_value
-                      ? (parseFloat(item.default_value) /
-                          parseFloat(item.max_value)) *
-                        100
-                      : 0
-                  }
-                  tintColor="#0A2342"
-                  backgroundColor="#d9e1ec"
-                  rotation={-130}
-                  arcSweepAngle={260}
-                >
-                  {() => (
-                    <Text style={styles.cardValue}>
-                      {item.default_value ?? "-"}
-                      {item.unit ?? ""}
-                    </Text>
-                  )}
-                </AnimatedCircularProgress>
-              </View>
-            </TouchableOpacity>
-          ))}
+          {widgets.map((item, index) => {
+            const value =
+              realtimeValues[item.pin ?? ""]?.toString() ??
+              item.default_value?.toString() ??
+              "0";
+            const numericValue = parseFloat(value) || 0;
+            const max = parseFloat(item.max_value ?? "100") || 100;
+
+            return (
+              <TouchableOpacity
+                key={index}
+                style={styles.card}
+                onPress={() => {
+                  setSelectedWidget(item);
+                  setFormVisible(true);
+                }}
+                activeOpacity={0.8}
+              >
+                <View style={styles.cardHeader}>
+                  <Text style={styles.cardLabel}>{item.name}</Text>
+                </View>
+                <View style={{ alignItems: "center" }}>
+                  <AnimatedCircularProgress
+                    size={100}
+                    width={8}
+                    fill={(numericValue / max) * 100}
+                    tintColor="#0A2342"
+                    backgroundColor="#d9e1ec"
+                    rotation={-130}
+                    arcSweepAngle={260}
+                  >
+                    {() => (
+                      <Text style={styles.cardValue}>
+                        {numericValue}
+                        {item.unit ?? ""}
+                      </Text>
+                    )}
+                  </AnimatedCircularProgress>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       </ScrollView>
 
-      {/* ✅ Tombol tambah hanya muncul untuk Admin & Operator */}
       {(userRole === "Admin" || userRole === "Operator") && (
         <TouchableOpacity
           style={styles.addButton}
@@ -363,7 +418,7 @@ export default function WidgetScreen() {
         onDelete={handleDeleteWidget}
         pins={pins}
         initialData={selectedWidget}
-        canEdit={userRole === "Admin" || userRole === "Operator"} // ✅ Kontrol akses modal
+        canEdit={userRole === "Admin" || userRole === "Operator"}
       />
     </View>
   );
