@@ -95,7 +95,8 @@ export default function LoginScreen() {
         <View style={styles.inputContainer}>
           <TextInput
             placeholder="Masukan email, username, no telp pengguna"
-            style={styles.input}
+            placeholderTextColor="#999"
+            style={[styles.input, { color: "#000" }]}
             value={identity}
             onChangeText={setIdentity}
           />
@@ -107,11 +108,13 @@ export default function LoginScreen() {
         <View style={styles.inputContainer}>
           <TextInput
             placeholder="Masukan kata sandi"
-            secureTextEntry={!passwordVisible} // jika false, teks disembunyikan
-            style={styles.input}
+            placeholderTextColor="#999" // tambahkan warna placeholder abu-abu
+            secureTextEntry={!passwordVisible}
+            style={[styles.input, { color: "#000" }]} // pastikan teks berwarna hitam
             value={password}
             onChangeText={setPassword}
           />
+
           {/* Tombol untuk melihat/menyembunyikan kata sandi */}
           <TouchableOpacity
             onPress={() => setPasswordVisible(!passwordVisible)}

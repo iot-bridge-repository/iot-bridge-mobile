@@ -25,19 +25,25 @@ interface NotificationEvent {
   is_active: boolean;
   created_at: string;
   message?: string;
+  device_id?: string;
+}
+
+interface Device {
+  id: string;
+  name: string;
 }
 
 export default function NotificationEventsScreen() {
-  const { organizationId, deviceId } = useLocalSearchParams();
+  const { organizationId } = useLocalSearchParams();
   const router = useRouter();
 
   const [events, setEvents] = useState<NotificationEvent[]>([]);
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // modal add
+  // modal add/edit
   const [modalVisible, setModalVisible] = useState(false);
-
-  // modal edit
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<NotificationEvent | null>(
     null
@@ -52,10 +58,16 @@ export default function NotificationEventsScreen() {
   const [isActive, setIsActive] = useState(true);
 
   useEffect(() => {
-    if (organizationId && deviceId) {
+    if (organizationId) {
+      fetchDevices();
+    }
+  }, [organizationId]);
+
+  useEffect(() => {
+    if (organizationId && selectedDeviceId) {
       fetchEvents();
     }
-  }, [organizationId, deviceId]);
+  }, [organizationId, selectedDeviceId]);
 
   const resetForm = () => {
     setPin("");
@@ -75,11 +87,27 @@ export default function NotificationEventsScreen() {
     setIsActive(event.is_active);
   };
 
+  const fetchDevices = async () => {
+    try {
+      const token = await AsyncStorage.getItem("jwtToken");
+      const url = `${process.env.EXPO_PUBLIC_API_URL}/organizations/${organizationId}/devices/search`;
+
+      const res = await axios.get(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
+
+      setDevices(res.data?.data || []);
+    } catch (err: any) {
+      console.log("fetchDevices error:", err.response?.data || err.message);
+      Alert.alert("Error", "Gagal memuat daftar perangkat");
+    }
+  };
+
   const fetchEvents = async () => {
     try {
       setLoading(true);
       const token = await AsyncStorage.getItem("jwtToken");
-      const url = `${process.env.EXPO_PUBLIC_API_URL}/organizations/${organizationId}/devices/${deviceId}/notification-events/list`;
+      const url = `${process.env.EXPO_PUBLIC_API_URL}/organizations/${organizationId}/devices/${selectedDeviceId}/notification-events/list`;
 
       const res = await axios.get(url, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -97,6 +125,7 @@ export default function NotificationEventsScreen() {
 
   const handleAddEvent = async () => {
     if (
+      !selectedDeviceId ||
       !pin.trim() ||
       !subject.trim() ||
       !comparisonType.trim() ||
@@ -104,66 +133,79 @@ export default function NotificationEventsScreen() {
     ) {
       Alert.alert(
         "Error",
-        "Field wajib diisi (PIN, Subject, Comparison, Threshold)"
+        "Field wajib diisi (Device, PIN, Subject, Comparison, Threshold)"
       );
       return;
     }
 
     try {
       const token = await AsyncStorage.getItem("jwtToken");
-      const url = `${process.env.EXPO_PUBLIC_API_URL}/organizations/${organizationId}/devices/${deviceId}/notification-events`;
+      const url = `${process.env.EXPO_PUBLIC_API_URL}/organizations/${organizationId}/devices/${selectedDeviceId}/notification-events`;
 
-      await axios.post(
-        url,
-        {
-          pin,
-          subject,
-          message,
-          comparison_type: comparisonType,
-          threshold_value: Number(thresholdValue),
-          is_active: isActive,
-        },
-        {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        }
-      );
+      const body = {
+        pin,
+        subject,
+        message: message.trim(),
+        comparison_type: comparisonType,
+        threshold_value: thresholdValue.trim(), // 🔹 tetap string
+        is_active: isActive,
+      };
+
+      console.log("📤 Add Event Body:", body);
+
+      await axios.post(url, body, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
 
       resetForm();
       setModalVisible(false);
       fetchEvents();
     } catch (err: any) {
-      console.log("addEvent error:", err.response?.data || err.message);
+      console.log("❌ addEvent error:", err.response?.data || err.message);
       Alert.alert("Error", "Gagal menambahkan event");
     }
   };
 
   const handleUpdateEvent = async () => {
-    if (!selectedEvent) return;
+    if (!selectedEvent || !selectedDeviceId) return;
 
     try {
       const token = await AsyncStorage.getItem("jwtToken");
-      const url = `${process.env.EXPO_PUBLIC_API_URL}/organizations/${organizationId}/devices/${deviceId}/notification-events/${selectedEvent.id}`;
+      const url = `${process.env.EXPO_PUBLIC_API_URL}/organizations/${organizationId}/devices/${selectedDeviceId}/notification-events/${selectedEvent.id}`;
 
       const body = {
         pin,
         subject,
-        message,
+        message: message.trim(),
         comparison_type: comparisonType,
-        threshold_value: thresholdValue.toString(),
+        threshold_value: thresholdValue.trim(),
         is_active: isActive,
       };
 
-      console.log("PATCH update event:", url, body);
+      console.log("📤 Update Event Body:", body);
 
       await axios.patch(url, body, {
         headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
 
+      Alert.alert("Sukses", "Event notifikasi berhasil diperbarui!");
+      await fetchEvents(); // tunggu data baru masuk
+      resetForm(); // baru reset form
       setEditModalVisible(false);
-      fetchEvents();
     } catch (err: any) {
-      console.log("updateEvent error:", err.response?.data || err.message);
-      Alert.alert("Error", "Gagal update event");
+      console.log("❌ updateEvent error:", err.response?.data || err.message);
+
+      // Tangani error backend agar user paham
+      if (err.response?.data?.message) {
+        const msg = err.response.data.message;
+        if (Array.isArray(msg)) {
+          Alert.alert("Validasi Gagal", msg.join("\n"));
+        } else {
+          Alert.alert("Validasi Gagal", msg);
+        }
+      } else {
+        Alert.alert("Error", "Terjadi kesalahan saat memperbarui event.");
+      }
     }
   };
 
@@ -176,18 +218,21 @@ export default function NotificationEventsScreen() {
         onPress: async () => {
           try {
             const token = await AsyncStorage.getItem("jwtToken");
-            const url = `${process.env.EXPO_PUBLIC_API_URL}/organizations/${organizationId}/devices/${deviceId}/notification-events/${eventId}`;
+            const url = `${process.env.EXPO_PUBLIC_API_URL}/organizations/${organizationId}/devices/${selectedDeviceId}/notification-events/${eventId}`;
 
             await axios.delete(url, {
               headers: token ? { Authorization: `Bearer ${token}` } : undefined,
             });
 
+            // ✅ Jika berhasil
+            Alert.alert("Berhasil", "Event notifikasi berhasil dihapus");
             fetchEvents();
           } catch (err: any) {
             console.log(
-              "deleteEvent error:",
+              "❌ deleteEvent error:",
               err.response?.data || err.message
             );
+            // ❌ Jika gagal
             Alert.alert("Error", "Gagal menghapus event");
           }
         },
@@ -195,21 +240,31 @@ export default function NotificationEventsScreen() {
     ]);
   };
 
+  const getDeviceName = (id: string) =>
+    devices.find((d) => d.id === id)?.name || "-";
+
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() =>
-            router.replace({
-              pathname: "/widget",
-              params: { organizationId, deviceId },
-            })
-          }
-        >
+        <TouchableOpacity onPress={() => router.push("/(tabs)/perangkat")}>
           <Ionicons name="arrow-back" size={24} color="#000" />
         </TouchableOpacity>
         <Text style={styles.title}>Notification Events</Text>
+      </View>
+
+      {/* Pilih perangkat */}
+      <Text style={{ marginBottom: 5 }}>Pilih Perangkat</Text>
+      <View style={styles.pickerWrapper}>
+        <Picker
+          selectedValue={selectedDeviceId}
+          onValueChange={(val) => setSelectedDeviceId(val)}
+        >
+          <Picker.Item label="Pilih perangkat..." value="" />
+          {devices.map((d) => (
+            <Picker.Item key={d.id} label={d.name} value={d.id} />
+          ))}
+        </Picker>
       </View>
 
       {loading ? (
@@ -231,6 +286,9 @@ export default function NotificationEventsScreen() {
               }}
             >
               <View style={styles.card}>
+                <Text style={styles.deviceName}>
+                  {getDeviceName(selectedDeviceId)}
+                </Text>
                 <View
                   style={{
                     flexDirection: "row",
@@ -263,21 +321,12 @@ export default function NotificationEventsScreen() {
                 <View style={styles.cardRow}>
                   <Text style={styles.label}>Status:</Text>
                   <Text
-                    style={[
-                      styles.value,
-                      {
-                        color: item.is_active ? "green" : "red",
-                        fontWeight: "600",
-                      },
-                    ]}
+                    style={{
+                      color: item.is_active ? "green" : "red",
+                      fontWeight: "600",
+                    }}
                   >
                     {item.is_active ? "Aktif" : "Nonaktif"}
-                  </Text>
-                </View>
-                <View style={styles.cardRow}>
-                  <Text style={styles.label}>Created:</Text>
-                  <Text style={styles.value}>
-                    {new Date(item.created_at).toLocaleString()}
                   </Text>
                 </View>
               </View>
@@ -291,7 +340,7 @@ export default function NotificationEventsScreen() {
         />
       )}
 
-      {/* Tombol tambah event */}
+      {/* Tombol tambah */}
       <TouchableOpacity
         style={styles.addButton}
         onPress={() => setModalVisible(true)}
@@ -310,11 +359,13 @@ export default function NotificationEventsScreen() {
               message={message}
               comparisonType={comparisonType}
               thresholdValue={thresholdValue}
+              isActive={isActive}
               setPin={setPin}
               setSubject={setSubject}
               setMessage={setMessage}
               setComparisonType={setComparisonType}
               setThresholdValue={setThresholdValue}
+              setIsActive={setIsActive}
             />
             <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
               <TouchableOpacity
@@ -337,8 +388,15 @@ export default function NotificationEventsScreen() {
         </View>
       </Modal>
 
-      {/* Modal edit event */}
-      <Modal visible={editModalVisible} transparent animationType="slide">
+      {/* Modal edit */}
+      <Modal
+        visible={editModalVisible}
+        transparent
+        animationType="slide"
+        onShow={() => {
+          if (selectedEvent) fillFormForEdit(selectedEvent);
+        }}
+      >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Edit Event</Text>
@@ -348,11 +406,13 @@ export default function NotificationEventsScreen() {
               message={message}
               comparisonType={comparisonType}
               thresholdValue={thresholdValue}
+              isActive={isActive}
               setPin={setPin}
               setSubject={setSubject}
               setMessage={setMessage}
               setComparisonType={setComparisonType}
               setThresholdValue={setThresholdValue}
+              setIsActive={setIsActive}
             />
             <View style={{ flexDirection: "row", justifyContent: "flex-end" }}>
               <TouchableOpacity
@@ -361,8 +421,8 @@ export default function NotificationEventsScreen() {
                   { backgroundColor: "gray", marginRight: 10 },
                 ]}
                 onPress={() => {
-                  resetForm();
                   setEditModalVisible(false);
+                  setTimeout(() => resetForm(), 300);
                 }}
               >
                 <Text style={styles.btnText}>Batal</Text>
@@ -378,18 +438,19 @@ export default function NotificationEventsScreen() {
   );
 }
 
-// 🔹 Component Form Biar DRY
 function EventForm({
   pin,
   subject,
   message,
   comparisonType,
   thresholdValue,
+  isActive,
   setPin,
   setSubject,
   setMessage,
   setComparisonType,
   setThresholdValue,
+  setIsActive,
 }: any) {
   return (
     <>
@@ -429,6 +490,16 @@ function EventForm({
         keyboardType="numeric"
         style={styles.input}
       />
+      <Text style={{ marginBottom: 5 }}>Status</Text>
+      <View style={styles.pickerWrapper}>
+        <Picker
+          selectedValue={isActive}
+          onValueChange={(value) => setIsActive(value)}
+        >
+          <Picker.Item label="Aktif" value={true} />
+          <Picker.Item label="Nonaktif" value={false} />
+        </Picker>
+      </View>
     </>
   );
 }
@@ -437,6 +508,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff", padding: 20 },
   header: { flexDirection: "row", alignItems: "center", marginBottom: 20 },
   title: { fontSize: 18, fontWeight: "bold", marginLeft: 10 },
+  deviceName: { fontSize: 14, color: "gray", marginBottom: 5 },
   card: {
     backgroundColor: "white",
     padding: 15,

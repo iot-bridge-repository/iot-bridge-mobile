@@ -220,41 +220,35 @@ export default function ListOrganisasiScreen() {
           "Token tidak ditemukan. Silakan login ulang."
         );
 
-      // === 1️⃣ Update teks (name, description, location) ===
       const updateUrl = `${process.env.EXPO_PUBLIC_API_URL}/organizations/${organizationId}/profile`;
-      const textData = {
-        name: editedOrg.name,
-        description: editedOrg.description,
-        location: editedOrg.location,
-      };
 
-      await axios.patch(updateUrl, textData, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      // Buat FormData karena bisa berisi teks dan gambar
+      const formData = new FormData();
 
-      // === 2️⃣ Upload gambar jika ada file baru ===
+      formData.append("name", editedOrg.name || "");
+      formData.append("description", editedOrg.description || "");
+      formData.append("location", editedOrg.location || "");
+
+      // Jika ada foto baru yang dipilih (uri lokal)
       if (
         editedOrg.organization_picture &&
         editedOrg.organization_picture.startsWith("file")
       ) {
-        const formData = new FormData();
         formData.append("organization_picture", {
           uri: editedOrg.organization_picture,
           type: "image/jpeg",
           name: "organization_picture.jpg",
         } as any);
-
-        const uploadUrl = `${process.env.EXPO_PUBLIC_API_URL}/organizations/${organizationId}/upload-picture`;
-
-        await axios.post(uploadUrl, formData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-            Authorization: `Bearer ${token}`,
-          },
-        });
       }
 
-      // === 3️⃣ Refresh dan tutup modal ===
+      // Kirim PATCH langsung ke endpoint profile
+      await axios.patch(updateUrl, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
       await fetchOrganizations();
 
       Alert.alert("Sukses", "Data organisasi berhasil diperbarui");
