@@ -4,7 +4,7 @@
     "slug": "iot-bridge-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/logo-iob.png",
     "scheme": "iotbridgemobile",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
@@ -14,7 +14,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "foregroundImage": "./assets/images/logo-sign.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,

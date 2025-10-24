@@ -40,26 +40,40 @@ export default function LoginScreen() {
         password,
       });
 
-      console.log(apiUrl);
-      const data = await response.data;
+      const data = response.data;
       setLoading(false);
 
       Alert.alert("Sukses", "Login berhasil!");
       console.log("Data login:", data);
 
-      // ✅ Simpan token & userId ke penyimpanan lokal
       await AsyncStorage.setItem("jwtToken", data.data.token);
-      await AsyncStorage.setItem("userId", data.data.user.id); // <── Tambahan penting ini
+      await AsyncStorage.setItem("userId", data.data.user.id);
 
-      const savedUserId = await AsyncStorage.getItem("userId");
-      console.log("🧠 userId tersimpan di AsyncStorage:", savedUserId);
-
-      // Navigasi ke dashboard
       router.push("/(tabs)/dashboard");
-    } catch (error) {
+    } catch (error: any) {
       setLoading(false);
-      Alert.alert("Error", "Gagal terhubung ke server");
-      console.error(error);
+
+      console.log("🧩 Detail error:", JSON.stringify(error, null, 2));
+
+      if (error.response && error.response.status) {
+        // Server merespons dengan error (misalnya 400, 401, dll)
+        console.log("Response Error:", error.response.data);
+
+        if (error.response.status === 400) {
+          Alert.alert("Error", "Email atau password salah!");
+        } else {
+          Alert.alert("Error", "Terjadi kesalahan di server!");
+        }
+      } else if (error.request) {
+        // Permintaan dikirim tapi tidak ada respon dari server
+        Alert.alert(
+          "Error",
+          "Tidak ada respon dari server. Periksa koneksi internet Anda."
+        );
+      } else {
+        // Error lain (misalnya kesalahan di kode sendiri)
+        Alert.alert("Error", "Terjadi kesalahan internal.");
+      }
     }
   };
 
