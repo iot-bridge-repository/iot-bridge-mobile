@@ -1,6 +1,7 @@
 {
   "cli": {
-    "appVersionSource": "app.config"
+    "version": ">= 3.13.0",
+    "appVersionSource": "local"
   },
   "build": {
     "preview": {
